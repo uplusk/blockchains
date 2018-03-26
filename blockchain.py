@@ -7,20 +7,25 @@ from uuid import uuid4
 import requests
 from flask import Flask, jsonify, request
 
+#creating our class
 class Blockchain(object):
     
     def __init__(self):
         self.current_transaction = []
         self.chain = []
         self.nodes = set()
+        
         #To create a Genesis block
-        self.new_block(previous_hash='1', proof=100)
-        #print(self.chain)
+        self.new_block(previous_hash='1', proof=10)
+       
 
+    #register new nodes on your network
     def register_node(self,address):
         parsed_url = urlparse(address)
         self.nodes.add(parsed_url.netloc)
+    #here address is the parsed address of the node you're trying to register
 
+    #to check the validity of your blockchain when trying to add a new block/participating in consensus
     def valid_chain(self,chain):
         last_block = chain[0]
 
@@ -44,7 +49,7 @@ class Blockchain(object):
 
         return True
 
-
+    #it checks if the length of your chain is smaller than the chain of the nodes in your network
     def consensus(self):
         neighbors = self.nodes
         new_chain = None
@@ -68,6 +73,7 @@ class Blockchain(object):
         
         return False
 
+    #adding a new block post mining 
     def new_block(self,proof,previous_hash=None):
       #Adds a new block to the existing ledger  
         block = {
@@ -108,8 +114,7 @@ class Blockchain(object):
         #The last block of the ledger, gives the present state of the ledger
         return self.chain[-1]
 
-# last = Blockchain().last_block
-# print(type(last))     
+   
     def proof_of_work(self,last_block):
         last_proof = last_block['proof']
         last_hash = self.hash(last_block)
@@ -124,7 +129,7 @@ class Blockchain(object):
     def valid_proof(last_proof,proof,last_hash):
         spec = f'{last_proof}{proof}{last_hash}'.encode()
         spec_hash = hashlib.sha256(spec).hexdigest()
-        return spec_hash[:4] == '0000'
+        return spec_hash[:4] == '2020'
 
 
 
@@ -143,7 +148,7 @@ def index():
 @app.route('/mine', methods=['GET'])
 def mine():
     last_block = blockchain.last_block
-    #last_proof = last_block['proof']
+    
     
     proof = blockchain.proof_of_work(last_block)
     #The reward for finding the proof is a new transaction from sender 0 and recipient is our node identifier
@@ -162,11 +167,12 @@ def mine():
     }), 200
 
 
-
+#api to add a new transaction
 @app.route('/transactions/new',methods=['POST'])
 def new_transaction():
     body = request.get_json()
     
+    #sends back an error if values are missing
     required = ['sender','recipient','amount']
     if not all(k in body for k in required):
         return 'Values Missing', 400
@@ -176,6 +182,7 @@ def new_transaction():
     
     return jsonify(response), 201
 
+#api for the consensus mechanism
 @app.route('/nodes/consensus', methods=['GET'])
 def consensus():
     new_chain = blockchain.consensus()
@@ -191,6 +198,7 @@ def consensus():
         }
     return jsonify(response),200
 
+#api to register the node
 @app.route('/nodes/register', methods=['POST'])
 def register_nodes():
     values = request.get_json()
@@ -208,6 +216,7 @@ def register_nodes():
     }
     return jsonify(response), 201
 
+#api to get the full ledger
 @app.route('/chain',methods=['GET'])
 def full_chain():
     chain = {
